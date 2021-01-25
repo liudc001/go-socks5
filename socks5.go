@@ -62,8 +62,10 @@ func New(conf *Config) (*Server, error) {
 	// Ensure we have at least one authentication method enabled
 	if len(conf.AuthMethods) == 0 {
 		if conf.Credentials != nil {
+			// 用户密码模式
 			conf.AuthMethods = []Authenticator{&UserPassAuthenticator{conf.Credentials}}
 		} else {
+			// 默认免认证模式
 			conf.AuthMethods = []Authenticator{&NoAuthAuthenticator{}}
 		}
 	}
@@ -144,6 +146,7 @@ func (s *Server) ServeConn(conn net.Conn) error {
 		return err
 	}
 
+	// 将消息内容封装成请求
 	request, err := NewRequest(bufConn)
 	if err != nil {
 		if err == unrecognizedAddrType {
@@ -153,7 +156,10 @@ func (s *Server) ServeConn(conn net.Conn) error {
 		}
 		return fmt.Errorf("Failed to read destination address: %v", err)
 	}
+	// 认证上下文信息
 	request.AuthContext = authContext
+
+	// 请求连接的地址信息
 	if client, ok := conn.RemoteAddr().(*net.TCPAddr); ok {
 		request.RemoteAddr = &AddrSpec{IP: client.IP, Port: client.Port}
 	}

@@ -43,7 +43,7 @@ func (a NoAuthAuthenticator) GetCode() uint8 {
 }
 
 func (a NoAuthAuthenticator) Authenticate(reader io.Reader, writer io.Writer) (*AuthContext, error) {
-	_, err := writer.Write([]byte{socks5Version, NoAuth})
+	_, err := writer.Write([]byte{socks5Version, NoAuth}) // 告诉客户端，当前使用的协议和认证方式
 	return &AuthContext{NoAuth, nil}, err
 }
 
@@ -59,12 +59,13 @@ func (a UserPassAuthenticator) GetCode() uint8 {
 
 func (a UserPassAuthenticator) Authenticate(reader io.Reader, writer io.Writer) (*AuthContext, error) {
 	// Tell the client to use user/pass auth
+	// 告诉客户端，当前使用的协议和认证方式
 	if _, err := writer.Write([]byte{socks5Version, UserPassAuth}); err != nil {
 		return nil, err
 	}
 
 	// Get the version and username length
-	header := []byte{0, 0}
+	header := []byte{0, 0} 
 	if _, err := io.ReadAtLeast(reader, header, 2); err != nil {
 		return nil, err
 	}
@@ -95,6 +96,7 @@ func (a UserPassAuthenticator) Authenticate(reader io.Reader, writer io.Writer) 
 
 	// Verify the password
 	if a.Credentials.Valid(string(user), string(pass)) {
+		// 发送身份认证通过消息
 		if _, err := writer.Write([]byte{userAuthVersion, authSuccess}); err != nil {
 			return nil, err
 		}
@@ -118,10 +120,11 @@ func (s *Server) authenticate(conn io.Writer, bufConn io.Reader) (*AuthContext, 
 	}
 
 	// Select a usable method
+	// 选择可用的认证方法
 	for _, method := range methods {
 		cator, found := s.authMethods[method]
 		if found {
-			return cator.Authenticate(bufConn, conn)
+			return cator.Authenticate(bufConn, conn) // 调用身份认证方法
 		}
 	}
 
@@ -143,8 +146,9 @@ func readMethods(r io.Reader) ([]byte, error) {
 	if _, err := r.Read(header); err != nil {
 		return nil, err
 	}
-
+	// 认证方法个数读取
 	numMethods := int(header[0])
+	// 读取认证方法返回
 	methods := make([]byte, numMethods)
 	_, err := io.ReadAtLeast(r, methods, numMethods)
 	return methods, err

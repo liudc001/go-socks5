@@ -57,11 +57,11 @@ func TestRequest_Connect(t *testing.T) {
 
 	// Create the connect request
 	buf := bytes.NewBuffer(nil)
-	buf.Write([]byte{5, 1, 0, 1, 127, 0, 0, 1})
+	buf.Write([]byte{5, 1, 0, 1, 127, 0, 0, 1}) // VER,CMD,RSV,ATYP,DST.ADDR
 
 	port := []byte{0, 0}
 	binary.BigEndian.PutUint16(port, uint16(lAddr.Port))
-	buf.Write(port)
+	buf.Write(port) // DST.PORT
 
 	// Send a ping
 	buf.Write([]byte("ping"))
@@ -80,8 +80,8 @@ func TestRequest_Connect(t *testing.T) {
 	// Verify response
 	out := resp.buf.Bytes()
 	expected := []byte{
-		5,
-		0,
+		5, // 协议 VER
+		0, // 
 		0,
 		1,
 		127, 0, 0, 1,

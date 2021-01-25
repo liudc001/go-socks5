@@ -43,9 +43,9 @@ type AddressRewriter interface {
 // AddrSpec is used to return the target AddrSpec
 // which may be specified as IPv4, IPv6, or a FQDN
 type AddrSpec struct {
-	FQDN string
-	IP   net.IP
-	Port int
+	FQDN string  // (Fully Qualified Domain Name)全限定域名：同时带有主机名和域名的名称
+	IP   net.IP  // IP地址
+	Port int     // 端口
 }
 
 func (a *AddrSpec) String() string {
@@ -98,6 +98,8 @@ func NewRequest(bufConn io.Reader) (*Request, error) {
 	if header[0] != socks5Version {
 		return nil, fmt.Errorf("Unsupported command version: %v", header[0])
 	}
+
+	fmt.Printf(">>> NewRequest header=%v\n", header)
 
 	// Read in the destination address
 	dest, err := readAddrSpec(bufConn)
@@ -174,6 +176,7 @@ func (s *Server) handleConnect(ctx context.Context, conn conn, req *Request) err
 			return net.Dial(net_, addr)
 		}
 	}
+	// 连接实际服务器地址 
 	target, err := dial(ctx, "tcp", req.realDestAddr.Address())
 	if err != nil {
 		msg := err.Error()
@@ -193,6 +196,10 @@ func (s *Server) handleConnect(ctx context.Context, conn conn, req *Request) err
 	// Send success
 	local := target.LocalAddr().(*net.TCPAddr)
 	bind := AddrSpec{IP: local.IP, Port: local.Port}
+
+	fmt.Printf(">>> handleConnect, bindAddrSpec=%v\n", bind.Address())
+
+	// 回复连接成功
 	if err := sendReply(conn, successReply, &bind); err != nil {
 		return fmt.Errorf("Failed to send reply: %v", err)
 	}
@@ -261,6 +268,8 @@ func readAddrSpec(r io.Reader) (*AddrSpec, error) {
 	if _, err := r.Read(addrType); err != nil {
 		return nil, err
 	}
+
+	fmt.Printf(">>> readAddrSpec addrType=%v\n", addrType)
 
 	// Handle on a per type basis
 	switch addrType[0] {
@@ -343,6 +352,8 @@ func sendReply(w io.Writer, resp uint8, addr *AddrSpec) error {
 	copy(msg[4:], addrBody)
 	msg[4+len(addrBody)] = byte(addrPort >> 8)
 	msg[4+len(addrBody)+1] = byte(addrPort & 0xff)
+
+	fmt.Printf(">>> SendReply, data=%v\n", msg)
 
 	// Send the message
 	_, err := w.Write(msg)
