@@ -32,7 +32,7 @@ const (
 )
 
 var (
-	unrecognizedAddrType = fmt.Errorf("Unrecognized address type")
+	unrecognizedAddrType = fmt.Errorf("unrecognized address type")
 )
 
 // AddressRewriter is used to rewrite a destination transparently
@@ -43,9 +43,9 @@ type AddressRewriter interface {
 // AddrSpec is used to return the target AddrSpec
 // which may be specified as IPv4, IPv6, or a FQDN
 type AddrSpec struct {
-	FQDN string  // (Fully Qualified Domain Name)全限定域名：同时带有主机名和域名的名称
-	IP   net.IP  // IP地址
-	Port int     // 端口
+	FQDN string // (Fully Qualified Domain Name)全限定域名：同时带有主机名和域名的名称
+	IP   net.IP // IP地址
+	Port int    // 端口
 }
 
 func (a *AddrSpec) String() string {
@@ -89,14 +89,14 @@ type conn interface {
 // NewRequest creates a new Request from the tcp connection
 func NewRequest(bufConn io.Reader) (*Request, error) {
 	// Read the version byte
-	header := []byte{0, 0, 0}
+	header := []byte{0, 0, 0} // VER,CMD,RSV
 	if _, err := io.ReadAtLeast(bufConn, header, 3); err != nil {
-		return nil, fmt.Errorf("Failed to get command version: %v", err)
+		return nil, fmt.Errorf("failed to get command version: %v", err)
 	}
 
 	// Ensure we are compatible
 	if header[0] != socks5Version {
-		return nil, fmt.Errorf("Unsupported command version: %v", header[0])
+		return nil, fmt.Errorf("unsupported command version: %v", header[0])
 	}
 
 	fmt.Printf(">>> NewRequest header=%v\n", header)
@@ -176,7 +176,7 @@ func (s *Server) handleConnect(ctx context.Context, conn conn, req *Request) err
 			return net.Dial(net_, addr)
 		}
 	}
-	// 连接实际服务器地址 
+	// 连接实际服务器地址
 	target, err := dial(ctx, "tcp", req.realDestAddr.Address())
 	if err != nil {
 		msg := err.Error()
@@ -259,7 +259,7 @@ func (s *Server) handleAssociate(ctx context.Context, conn conn, req *Request) e
 }
 
 // readAddrSpec is used to read AddrSpec.
-// Expects an address type byte, follwed by the address and port
+// Expects an address type byte, followed by the address and port
 func readAddrSpec(r io.Reader) (*AddrSpec, error) {
 	d := &AddrSpec{}
 
@@ -279,14 +279,12 @@ func readAddrSpec(r io.Reader) (*AddrSpec, error) {
 			return nil, err
 		}
 		d.IP = net.IP(addr)
-
 	case ipv6Address:
 		addr := make([]byte, 16)
 		if _, err := io.ReadAtLeast(r, addr, len(addr)); err != nil {
 			return nil, err
 		}
 		d.IP = net.IP(addr)
-
 	case fqdnAddress:
 		if _, err := r.Read(addrType); err != nil {
 			return nil, err
@@ -297,7 +295,6 @@ func readAddrSpec(r io.Reader) (*AddrSpec, error) {
 			return nil, err
 		}
 		d.FQDN = string(fqdn)
-
 	default:
 		return nil, unrecognizedAddrType
 	}
@@ -308,7 +305,6 @@ func readAddrSpec(r io.Reader) (*AddrSpec, error) {
 		return nil, err
 	}
 	d.Port = (int(port[0]) << 8) | int(port[1])
-
 	return d, nil
 }
 
@@ -323,22 +319,18 @@ func sendReply(w io.Writer, resp uint8, addr *AddrSpec) error {
 		addrType = ipv4Address
 		addrBody = []byte{0, 0, 0, 0}
 		addrPort = 0
-
 	case addr.FQDN != "":
 		addrType = fqdnAddress
 		addrBody = append([]byte{byte(len(addr.FQDN))}, addr.FQDN...)
 		addrPort = uint16(addr.Port)
-
 	case addr.IP.To4() != nil:
 		addrType = ipv4Address
 		addrBody = []byte(addr.IP.To4())
 		addrPort = uint16(addr.Port)
-
 	case addr.IP.To16() != nil:
 		addrType = ipv6Address
 		addrBody = []byte(addr.IP.To16())
 		addrPort = uint16(addr.Port)
-
 	default:
 		return fmt.Errorf("Failed to format address: %v", addr)
 	}

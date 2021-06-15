@@ -15,8 +15,8 @@ const (
 )
 
 var (
-	UserAuthFailed  = fmt.Errorf("User authentication failed")
-	NoSupportedAuth = fmt.Errorf("No supported authentication mechanism")
+	UserAuthFailed  = fmt.Errorf("user authentication failed")
+	NoSupportedAuth = fmt.Errorf("no supported authentication mechanism")
 )
 
 // A Request encapsulates authentication state provided
@@ -26,16 +26,18 @@ type AuthContext struct {
 	Method uint8
 	// Payload provided during negotiation.
 	// Keys depend on the used auth method.
-	// For UserPassauth contains Username
-	Payload map[string]string
+	// For UserPassAuth contains Username
+	Payload map[string]string // key="Username", value=username
 }
 
+// 定义认证器接口
 type Authenticator interface {
 	Authenticate(reader io.Reader, writer io.Writer) (*AuthContext, error)
 	GetCode() uint8
 }
 
 // NoAuthAuthenticator is used to handle the "No Authentication" mode
+// 无权限验证认证器，所有请求都直接放行
 type NoAuthAuthenticator struct{}
 
 func (a NoAuthAuthenticator) GetCode() uint8 {
@@ -48,7 +50,7 @@ func (a NoAuthAuthenticator) Authenticate(reader io.Reader, writer io.Writer) (*
 }
 
 // UserPassAuthenticator is used to handle username/password based
-// authentication
+// 用户名密码认证器 authentication
 type UserPassAuthenticator struct {
 	Credentials CredentialStore
 }
@@ -65,14 +67,14 @@ func (a UserPassAuthenticator) Authenticate(reader io.Reader, writer io.Writer) 
 	}
 
 	// Get the version and username length
-	header := []byte{0, 0} 
+	header := []byte{0, 0}
 	if _, err := io.ReadAtLeast(reader, header, 2); err != nil {
 		return nil, err
 	}
 
 	// Ensure we are compatible
 	if header[0] != userAuthVersion {
-		return nil, fmt.Errorf("Unsupported auth version: %v", header[0])
+		return nil, fmt.Errorf("unsupported auth version: %v", header[0])
 	}
 
 	// Get the user name
@@ -95,12 +97,13 @@ func (a UserPassAuthenticator) Authenticate(reader io.Reader, writer io.Writer) 
 	}
 
 	// Verify the password
-	if a.Credentials.Valid(string(user), string(pass)) {
-		// 发送身份认证通过消息
+	if a.Credentials.Valid(string(user), string(pass)) { // 校验用户名密码是否通过
+		// 回复身份认证通过消息
 		if _, err := writer.Write([]byte{userAuthVersion, authSuccess}); err != nil {
 			return nil, err
 		}
 	} else {
+		// 回复认证未通过消息
 		if _, err := writer.Write([]byte{userAuthVersion, authFailure}); err != nil {
 			return nil, err
 		}

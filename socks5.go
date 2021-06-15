@@ -11,32 +11,38 @@ import (
 )
 
 const (
-	socks5Version = uint8(5) // 协议版本号 
+	socks5Version = uint8(5) // 协议版本号
 )
 
 // Config is used to setup and configure a Server
+// 定义配置参数结构体对象
 type Config struct {
 	// AuthMethods can be provided to implement custom authentication
 	// By default, "auth-less" mode is enabled.
 	// For password-based auth use UserPassAuthenticator.
+	// 权限认证器
 	AuthMethods []Authenticator
 
 	// If provided, username/password authentication is enabled,
 	// by appending a UserPassAuthenticator to AuthMethods. If not provided,
 	// and AUthMethods is nil, then "auth-less" mode is enabled.
+	// 凭证存储对象
 	Credentials CredentialStore
 
 	// Resolver can be provided to do custom name resolution.
 	// Defaults to DNSResolver if not provided.
+	// 域名解析器
 	Resolver NameResolver
 
 	// Rules is provided to enable custom logic around permitting
 	// various commands. If not provided, PermitAll is used.
+	// 访问格则定义
 	Rules RuleSet
 
 	// Rewriter can be used to transparently rewrite addresses.
 	// This is invoked before the RuleSet is invoked.
 	// Defaults to NoRewrite.
+	// 路径重写，反向代理
 	Rewriter AddressRewriter
 
 	// BindIP is used for bind or udp associate
@@ -47,10 +53,11 @@ type Config struct {
 	Logger *log.Logger
 
 	// Optional function for dialing out
+	// 拨号链接
 	Dial func(ctx context.Context, network, addr string) (net.Conn, error)
 }
 
-// Server is reponsible for accepting connections and handling
+// Server is responsible for accepting connections and handling
 // the details of the SOCKS5 protocol
 type Server struct {
 	config      *Config
@@ -71,17 +78,17 @@ func New(conf *Config) (*Server, error) {
 	}
 
 	// Ensure we have a DNS resolver
-	if conf.Resolver == nil {
+	if conf.Resolver == nil { // 默认解析器为 DNS解析器
 		conf.Resolver = DNSResolver{}
 	}
 
 	// Ensure we have a rule set
-	if conf.Rules == nil {
+	if conf.Rules == nil { // 默认规则，全部放行
 		conf.Rules = PermitAll()
 	}
 
 	// Ensure we have a log target
-	if conf.Logger == nil {
+	if conf.Logger == nil { // 默认日志输出控制台
 		conf.Logger = log.New(os.Stdout, "", log.LstdFlags)
 	}
 
@@ -133,7 +140,7 @@ func (s *Server) ServeConn(conn net.Conn) error {
 
 	// Ensure we are compatible
 	if version[0] != socks5Version {
-		err := fmt.Errorf("Unsupported SOCKS version: %v", version)
+		err := fmt.Errorf("unsupported SOCKS version: %v", version)
 		s.config.Logger.Printf("[ERR] socks: %v", err)
 		return err
 	}
@@ -141,7 +148,7 @@ func (s *Server) ServeConn(conn net.Conn) error {
 	// Authenticate the connection
 	authContext, err := s.authenticate(conn, bufConn)
 	if err != nil {
-		err = fmt.Errorf("Failed to authenticate: %v", err)
+		err = fmt.Errorf("failed to authenticate: %v", err)
 		s.config.Logger.Printf("[ERR] socks: %v", err)
 		return err
 	}
@@ -151,10 +158,10 @@ func (s *Server) ServeConn(conn net.Conn) error {
 	if err != nil {
 		if err == unrecognizedAddrType {
 			if err := sendReply(conn, addrTypeNotSupported, nil); err != nil {
-				return fmt.Errorf("Failed to send reply: %v", err)
+				return fmt.Errorf("failed to send reply: %v", err)
 			}
 		}
-		return fmt.Errorf("Failed to read destination address: %v", err)
+		return fmt.Errorf("failed to read destination address: %v", err)
 	}
 	// 认证上下文信息
 	request.AuthContext = authContext

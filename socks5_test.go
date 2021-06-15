@@ -3,18 +3,18 @@ package socks5
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
 	"testing"
 	"time"
-	"fmt"
 )
 
 func TestSOCKS5_Connect(t *testing.T) {
 	// Create a local listener
-	// 开启本地tcp监听服务，端口号系统自动分配 
+	// 开启本地tcp监听服务，端口号系统自动分配
 	// [目标服务] 实际需要访问的服务器
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -44,6 +44,8 @@ func TestSOCKS5_Connect(t *testing.T) {
 		// [目标服务] 响应消息写入内容为 pong
 		conn.Write([]byte("pong"))
 	}()
+
+	// ------------------------------------------------------------------------
 
 	// [目标服务]获取tcp地址信息
 	lAddr := l.Addr().(*net.TCPAddr)
@@ -81,13 +83,13 @@ func TestSOCKS5_Connect(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	// Connect, auth and connec to local
+	// Connect, auth and connect to local
 	// 定义客户端向socks客户端发送消息内容
 	req := bytes.NewBuffer(nil)
-	req.Write([]byte{5}) // VER 5
-	req.Write([]byte{2, NoAuth, UserPassAuth}) // NMETHODS[2个长度], METHODS[0,2] : 2, 0 , 2; 不认证 或者 用户名密码认证
+	req.Write([]byte{5})                                     // VER 5
+	req.Write([]byte{2, NoAuth, UserPassAuth})               // NMETHODS[2个长度], METHODS[0,2] : 2, 0 , 2; 不认证 或者 用户名密码认证
 	req.Write([]byte{1, 3, 'f', 'o', 'o', 3, 'b', 'a', 'r'}) // userAuthVersion, len(username), username, len(password), password
-	req.Write([]byte{5, 1, 0, 1, 127, 0, 0, 1}) // 建立连接消息: VER,CMD,RSV,ATYP,DST.ADDR
+	req.Write([]byte{5, 1, 0, 1, 127, 0, 0, 1})              // 建立连接消息: VER,CMD,RSV,ATYP(addrType),DST.ADDR
 
 	fmt.Printf(">>> wrap req data=%v\n", req.Bytes())
 
@@ -111,13 +113,13 @@ func TestSOCKS5_Connect(t *testing.T) {
 	expected := []byte{
 		socks5Version, // VER，协议
 		UserPassAuth,  // METHOD， 认证方式
-		1, // userAuthVersion
-		authSuccess, // 认证结果为 成功
-		5, // ver
-		0, // CMD
-		0, // RSV 保留位
-		1, // ATYP
-		127, 0, 0, 1, // ip
+		1,             // userAuthVersion
+		authSuccess,   // 认证结果为 成功
+		5,             // ver
+		0,             // CMD
+		0,             // RSV 保留位
+		1,             // ATYP
+		127, 0, 0, 1,  // ip
 		0, 0, // 端口
 		'p', 'o', 'n', 'g',
 	}
